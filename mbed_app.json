@@ -16,10 +16,10 @@
             "value": true
         },
         "wifi-ssid": {
-            "value": "\"your-wifi-ssid\""
+            "value": "\"ee-250-2.4ghz\""
         },
         "wifi-password": {
-            "value": "\"your-wifi-password\""
+            "value": "\"ee250@vhe205\""
         }
     },
     "target_overrides": {

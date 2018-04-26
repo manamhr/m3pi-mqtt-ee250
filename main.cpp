@@ -82,7 +82,11 @@ m3pi m3pi(p23, p9, p10);
  */
 Mutex mqttMtx;
 
+Mutex dir_mut;
+char dir;
 static char *topic = "m3pi-mqtt-ee250";
+
+AnalogIn ultraSonic(p19); //ultrasonic sensor analog in
 
 /**
  * @brief      controls movement of the 3pi
@@ -172,6 +176,20 @@ void messageArrived(MQTT::MessageData& md)
             msg->length = message.payloadlen;
             getLEDThreadMailbox()->put(msg);
             break;
+            //added
+         case FWD_TO_MOVE_THR:
+			printf("fwding to move thread\n");
+			msg = getMoveThreadMailbox()->alloc();
+
+			if (!msg)   {
+				printf("move thread mailbox full\n");
+				break;
+			}
+
+			memcpy(msg->content, message.payload, message.payloadlen);
+			msg->length = message.payloadlen;
+			getMoveThreadMailbox()->put(msg);
+			break;
         default:
             /* do nothing */
             printf("Unknown MQTT message\n");
@@ -267,6 +285,8 @@ int main()
        won't be able to publish any MQTT messages. Modify this accordingly if
        you need to publish. */
     printThr.start(printThread);
+    //added
+    char loc_dir = 'n';
 
     /* The main thread will now run in the background to keep the MQTT/TCP 
      connection alive. MQTTClient is not an asynchronous library. Paho does
@@ -279,7 +299,51 @@ int main()
 
         if(!client.isConnected())
             mbed_reset(); //connection lost! software reset
+    //added
+        
+        if (dir_mut.trylock())  {
 
+			loc_dir = dir;
+			dir_mut.unlock();
+		}
+
+		switch (loc_dir)    {
+			case MOVE_LEFT:
+				movement('a', 25, 100);
+				break;
+			case MOVE_FORWARD_LEFT:
+				movement('w', 25, 100);
+				movement('a', 25, 100);
+				break;
+			case MOVE_FORWARD:
+				movement('w', 25, 100);
+				break;
+			case MOVE_FORWARD_RIGHT:
+				movement('w', 25, 100);
+				movement('d', 25, 100);
+				break;
+		 	case MOVE_RIGHT:
+		 		movement('d', 25, 100);
+				break;
+			case MOVE_BACK_RIGHT:
+				movement('s', 25, 100);
+				movement('d', 25, 100);
+				break;
+			case MOVE_BACK:
+				movement('s', 25, 100);
+				break;
+			case MOVE_BACK_LEFT:
+				movement('s', 25, 100);
+				movement('a', 25, 100);
+				break;
+			default:
+				break;
+		}
+
+
+		if(ultraSonic < 25){
+			
+		}
         /* yield() needs to be called at least once per keepAliveInterval. */
         client.yield(1000);
     }

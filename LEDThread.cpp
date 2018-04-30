@@ -72,8 +72,8 @@ void LEDThread(void *args)
     	
 		AnalogIn Ain(p15);
 		voltage = Ain.read();
-		distance = voltage / 0.0098; //inches, Vcc = 5V
-		printf("Distance: %f \n", distance);
+		distance = voltage/0.004883; //inches, Vcc = 5V
+		printf("Distance: %f \n cm", distance);
 
    
 

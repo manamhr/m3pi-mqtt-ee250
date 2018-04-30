@@ -58,13 +58,24 @@ static const char *topic = "m3pi-mqtt-ee250/led-thread";
 void LEDThread(void *args) 
 {
     MQTT::Client<MQTTNetwork, Countdown> *client = (MQTT::Client<MQTTNetwork, Countdown> *)args;
+    extern void movement(char command, char speed, int delta_t);
+
     MailMsg *msg;
     MQTT::Message message;
     osEvent evt;
     char pub_buf[16];
-
+	double distance = 0;
+	double voltage = 0;
 
     while(1) {
+    
+    	
+		AnalogIn Ain(p15);
+		voltage = Ain.read();
+		distance = voltage / 0.0098; //inches, Vcc = 5V
+		printf("Distance: %f \n", distance);
+
+   
 
         evt = LEDMailbox.get();
 

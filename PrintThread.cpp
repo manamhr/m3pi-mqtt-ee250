@@ -47,8 +47,10 @@
 #include "MQTTmbed.h"
 #include "MQTTNetwork.h"
 #include "mbed.h"
+#include "m3pi.h"
 
 Mail<MailMsg, PRINTTHREAD_MAILBOX_SIZE> PrintThreadMailbox;
+extern void movement(char command, char speed, int delta_t);
 
 /* When you read any .c or .cpp files, you often want to open their 
    corresponding header file and read them simultaneously. */
@@ -90,6 +92,23 @@ void printThread()
                program. */
             PrintThreadMailbox.free(msg);
         }
+
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
+        movement('w', 25, 100);
     } /* while */
 
     /* this should never be reached */

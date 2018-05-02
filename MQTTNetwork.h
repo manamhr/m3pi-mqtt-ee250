@@ -22,7 +22,8 @@ enum {
 enum {
     LED_THR_PUBLISH_MSG,
     LED_ON_ONE_SEC,
-    LED_BLINK_FAST
+    LED_BLINK_FAST,
+    DISTANCE_READING
 };
 
 /**

@@ -46,34 +46,69 @@
 #include "LEDThread.h"
 #include "MQTTmbed.h"
 #include "MQTTNetwork.h"
+#include "mbed.h"
+#include "m3pi.h"
 
 #include "MQTTClient.h"
+
+
+
+
+
+
+
 
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> LEDMailbox;
 
 static DigitalOut led2(LED2);
 
+
 static const char *topic = "m3pi-mqtt-ee250/led-thread";
+
+// m3pi m3pi(p23, p9, p10);
+
+extern void movement(char command, char speed, int delta_t);
+const int SIZE = 4;
+
+
 
 void LEDThread(void *args) 
 {
+    volatile int dist;
+    int distance_ar[3] = {0,0,0};
+
+    distance_ar[0]=dist/100;
+    distance_ar[1]=(dist%100)/10;
+    distance_ar[2]=(dist%10);
     MQTT::Client<MQTTNetwork, Countdown> *client = (MQTT::Client<MQTTNetwork, Countdown> *)args;
-    extern void movement(char command, char speed, int delta_t);
 
     MailMsg *msg;
     MQTT::Message message;
     osEvent evt;
     char pub_buf[16];
-	double distance = 0;
 	double voltage = 0;
 
+    int count = 0;
+
+    while(count < 4) 
+    {
+        AnalogIn Ain(p15);
+        voltage = Ain.read();
+        dist= (voltage / 0.0064) * 2.54; //cm, Vcc = 3.3V
+        //distance_ar[count] = dist[count];
+        count++;
+
+       
+        printf("Distance: %d  cm\n", dist);
+        wait(0.5);
+
+        
+
+
+    }
+
+
     while(1) {
-    
-    	
-		AnalogIn Ain(p15);
-		voltage = Ain.read();
-		distance = voltage/0.004883; //inches, Vcc = 5V
-		printf("Distance: %f \n cm", distance);
 
    
 
@@ -116,6 +151,21 @@ void LEDThread(void *args)
                     }
                     led2 = 0;
                     break;
+                case DISTANCE_READING:
+                    printf("LEDThread: received command to publish to topic"
+                           "m3pi-mqtt-example/led-thread\n");
+                    pub_buf[0] = (distance_ar[0]);
+                    pub_buf[1] = (distance_ar[1]);
+                    pub_buf[2] = (distance_ar[2]);
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 3; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic, message);
+                    mqttMtx.unlock();
                 default:
                     printf("LEDThread: invalid message\n");
                     break;
@@ -126,6 +176,7 @@ void LEDThread(void *args)
     } /* while */
 
     /* this should never be reached */
+
 }
 
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> *getLEDThreadMailbox() 

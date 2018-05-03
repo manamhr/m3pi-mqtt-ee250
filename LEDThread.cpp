@@ -48,32 +48,118 @@
 #include "MQTTNetwork.h"
 #include "mbed.h"
 #include "m3pi.h"
-
 #include "MQTTClient.h"
-
-
 
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> LEDMailbox;
 
 static DigitalOut led2(LED2);
 
+static const char *topic1 = "r2d2/front";
+static const char *topic2 = "r2d2/rear";
 
-static const char *topic = "r2d2/led-thread";
+m3pi m3pi(p23, p9, p10);
 
-// m3pi m3pi(p23, p9, p10);
-
-extern void movement(char command, char speed, int delta_t);
+// extern void movement(char command, char speed, int delta_t);
 const int SIZE = 4;
 int dist;
-// int distance_ar[4] = {0, 0, 0};
+int speed = 25;
+
+// 0: CCW
+// 1: CW
+int angle = 0;
+
+char pub_buf[16];
+
+void rotateCCW(int speed) {
+    m3pi.left(speed);
+    Thread::wait(140);
+    m3pi.stop();
+}
+
+void rotateCW(int speed)    {
+    m3pi.right(speed);
+    Thread::wait(140);
+    m3pi.stop();
+}
+
+
+void movement(char command, char speed, int delta_t)    {
+    if (command == 's')
+    {
+        m3pi.backward(speed);
+        Thread::wait(delta_t);
+        m3pi.stop();
+    }    
+    else if (command == 'a')
+    {
+        m3pi.left(speed);
+        Thread::wait(delta_t);
+        m3pi.stop();
+    }   
+    else if (command == 'w')
+    {
+        m3pi.forward(speed);
+        Thread::wait(delta_t);
+        m3pi.stop();
+    }
+    else if (command == 'd')
+    {
+        m3pi.right(speed);
+        Thread::wait(delta_t);
+        m3pi.stop();
+    }
+}
 
 void readFrontSensor()  {
     double voltage = 0;
     AnalogIn Ain(p15);
     voltage = Ain.read();
     dist = (voltage / 0.0064) * 2.54;
-    printf("Distance: %d cm\n", dist);
-    // return dist;
+
+    if (dist < 100) {
+        pub_buf[0] = (dist / 10) + 48;
+        pub_buf[1] = (dist % 10) + 48;
+        pub_buf[2] = ' ';
+        pub_buf[3] = 'c';
+        pub_buf[4] = 'm';
+        pub_buf[5] = ' ';
+    }
+    else    {
+        pub_buf[0] = (dist / 100) + 48;
+        pub_buf[1] = ((dist / 10) % 10) + 48;
+        pub_buf[2] = (dist % 10) + 48;
+        pub_buf[3] = ' ';
+        pub_buf[4] = 'c';
+        pub_buf[5] = 'm';
+    }
+
+    printf("Front: %d cm\n", dist);
+}
+
+void readBackSensor()  {
+    double voltage = 0;
+    AnalogIn Ain(p16);
+    voltage = Ain.read();
+    dist = (voltage / 0.0064) * 2.54;
+
+    if (dist < 100) {
+        pub_buf[0] = (dist / 10) + 48;
+        pub_buf[1] = (dist % 10) + 48;
+        pub_buf[2] = ' ';
+        pub_buf[3] = 'c';
+        pub_buf[4] = 'm';
+        pub_buf[5] = ' ';
+    }
+    else    {
+        pub_buf[0] = (dist / 100) + 48;
+        pub_buf[1] = ((dist / 10) % 10) + 48;
+        pub_buf[2] = (dist % 10) + 48;
+        pub_buf[3] = ' ';
+        pub_buf[4] = 'c';
+        pub_buf[5] = 'm';
+    }
+
+    printf("Rear: %d cm\n", dist);
 }
 
 void LEDThread(void *args) 
@@ -83,9 +169,6 @@ void LEDThread(void *args)
     MailMsg *msg;
     MQTT::Message message;
     osEvent evt;
-    char pub_buf[16];
-
-    // readFrontSensor();
 
     while(1) {
 
@@ -108,7 +191,7 @@ void LEDThread(void *args)
                     message.payloadlen = 2; //MQTTclient.h takes care of adding null char?
                     /* Lock the global MQTT mutex before publishing */
                     mqttMtx.lock();
-                    client->publish(topic, message);
+                    client->publish(topic1, message);
                     mqttMtx.unlock();
                     break;
                 case '1':
@@ -128,41 +211,9 @@ void LEDThread(void *args)
                     }
                     led2 = 0;
                     break;
+                // Move forward
                 case '3':
-                    printf("LEDThread: received command to publish to topic"
-                           "r2d2/led-thread\n");
-                    // readFrontSensor();
-                    movement('w', 25, 100);
-                    movement('w', 25, 100);
-                    movement('w', 25, 100);
-                    movement('w', 25, 100);
-
                     readFrontSensor();
-
-                    if (dist < 100) {
-                        pub_buf[0] = (dist / 10) + 48;
-                        pub_buf[1] = (dist % 10) + 48;
-                        pub_buf[2] = ' ';
-                        pub_buf[3] = 'c';
-                        pub_buf[4] = 'm';
-                        pub_buf[5] = ' ';
-                    }
-                    else    {
-                        pub_buf[0] = (dist / 100) + 48;
-                        pub_buf[1] = ((dist / 10) % 10) + 48;
-                        pub_buf[2] = (dist % 10) + 48;
-                        pub_buf[3] = ' ';
-                        pub_buf[4] = 'c';
-                        pub_buf[5] = 'm';
-                    }
-
-                    // pub_buf[0] = (char(distance_ar[0]));
-                    // pub_buf[1] = (char(distance_ar[1]));
-                    // pub_buf[2] = (char(distance_ar[2]));
-                    // pub_buf[3] = (' ');
-                    // pub_buf[4] = ('c');
-                    // pub_buf[5] = ('m');
-                    // printf("%s\n", pub_buf);
                     message.qos = MQTT::QOS0;
                     message.retained = false;
                     message.dup = false;
@@ -170,8 +221,96 @@ void LEDThread(void *args)
                     message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
                     /* Lock the global MQTT mutex before publishing */
                     mqttMtx.lock();
-                    client->publish(topic, message);
+                    client->publish(topic1, message);
                     mqttMtx.unlock();
+
+                    readBackSensor();
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic2, message);
+                    mqttMtx.unlock();
+
+                    movement('w', speed, 300);
+                    // movement('w', speed, 100);
+                    // movement('w', speed, 100);
+                    // movement('w', speed, 100);
+                    
+                    break;
+                // Move backward
+                case '4':
+                    readFrontSensor();
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic1, message);
+                    mqttMtx.unlock();
+
+                    readBackSensor();
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic2, message);
+                    mqttMtx.unlock();
+
+                    movement('s', speed, 300);
+                    // movement('s', speed, 100);
+                    // movement('s', speed, 100);
+                    // movement('s', speed, 100);
+
+                    break;
+                // Rotate CW
+                case '5':
+                    rotateCW(30);
+                    readFrontSensor();
+                    readBackSensor();
+
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic1, message);
+                    mqttMtx.unlock();
+                    break;
+                // Rotate CCW
+                case '6':
+                    rotateCCW(30);
+                    readFrontSensor();
+                    readBackSensor();
+
+                    message.qos = MQTT::QOS0;
+                    message.retained = false;
+                    message.dup = false;
+                    message.payload = (void*)pub_buf;
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
+                    /* Lock the global MQTT mutex before publishing */
+                    mqttMtx.lock();
+                    client->publish(topic1, message);
+                    mqttMtx.unlock();
+
+                    break;
+                // Avoid to CW
+                case '7':
+                    angle = 1;
+                    break;
+                // Avoid to CCW
+                case '8':
+                    angle = 0;
                     break;
                 default:
                     printf("LEDThread: invalid message\n");
@@ -185,6 +324,7 @@ void LEDThread(void *args)
     /* this should never be reached */
 
 }
+
 
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> *getLEDThreadMailbox() 
 {

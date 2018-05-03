@@ -75,7 +75,7 @@ DigitalOut wifiHwResetPin(WIFI_HW_RESET_PIN);
  *  If you send the right sequence of UART characters to the atmega328p, it will
  *  move the robot for you. We provide a movement() function below for you to use
  */
-m3pi m3pi(p23, p9, p10);
+// m3pi m3pi(p23, p9, p10);
 
 /* MQTTClient and TCPSocket (underneath MQTTNetwork) may not be thread safe. 
  * Lock this global mutex before any calls to publish(). 
@@ -104,33 +104,33 @@ static char *topic = "r2d2";
  *
  * @return     { void }
  */
-void movement(char command, char speed, int delta_t)
-{
-    if (command == 's')
-    {
-        m3pi.backward(speed);
-        Thread::wait(delta_t);
-        m3pi.stop();
-    }    
-    else if (command == 'a')
-    {
-        m3pi.left(speed);
-        Thread::wait(delta_t);
-        m3pi.stop();
-    }   
-    else if (command == 'w')
-    {
-        m3pi.forward(speed);
-        Thread::wait(delta_t);
-        m3pi.stop();
-    }
-    else if (command == 'd')
-    {
-        m3pi.right(speed);
-        Thread::wait(delta_t);
-        m3pi.stop();
-    }
-}
+// void movement(char command, char speed, int delta_t)
+// {
+//     if (command == 's')
+//     {
+//         m3pi.backward(speed);
+//         Thread::wait(delta_t);
+//         m3pi.stop();
+//     }    
+//     else if (command == 'a')
+//     {
+//         m3pi.left(speed);
+//         Thread::wait(delta_t);
+//         m3pi.stop();
+//     }   
+//     else if (command == 'w')
+//     {
+//         m3pi.forward(speed);
+//         Thread::wait(delta_t);
+//         m3pi.stop();
+//     }
+//     else if (command == 'd')
+//     {
+//         m3pi.right(speed);
+//         Thread::wait(delta_t);
+//         m3pi.stop();
+//     }
+// }
 
 /* Callback for any received MQTT messages */
 void messageArrived(MQTT::MessageData& md)
@@ -300,55 +300,9 @@ int main()
         Thread::wait(1000);
         printf("main: yielding...\n", client.isConnected());
 
-        // movement('a', 25, 100);
 
         if(!client.isConnected())
             mbed_reset(); //connection lost! software reset
-    //added
-/*        
-        if (dir_mut.trylock())  {
-
-			loc_dir = dir;
-			dir_mut.unlock();
-		}
-
-		switch (loc_dir)    {
-			case MOVE_LEFT:
-				movement('a', 25, 100);
-				break;
-			case MOVE_FORWARD_LEFT:
-				movement('w', 25, 100);
-				movement('a', 25, 100);
-				break;
-			case MOVE_FORWARD:
-				movement('w', 25, 100);
-				break;
-			case MOVE_FORWARD_RIGHT:
-				movement('w', 25, 100);
-				movement('d', 25, 100);
-				break;
-		 	case MOVE_RIGHT:
-		 		movement('d', 25, 100);
-				break;
-			case MOVE_BACK_RIGHT:
-				movement('s', 25, 100);
-				movement('d', 25, 100);
-				break;
-			case MOVE_BACK:
-				movement('s', 25, 100);
-				break;
-			case MOVE_BACK_LEFT:
-				movement('s', 25, 100);
-				movement('a', 25, 100);
-				break;
-			default:
-				break;
-		}
-
-
-		if(ultraSonic < 25){
-			
-		}
 
         /* yield() needs to be called at least once per keepAliveInterval. */
         client.yield(1000);

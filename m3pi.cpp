@@ -54,7 +54,7 @@ void m3pi::right_motor (char speed) {
 void m3pi::forward (char speed) {
     motor(1,speed);
     motor(0,speed);
-    printf("hello!");
+    // printf("hello!");
 }
 
 void m3pi::forward (char speed, char scaling) {

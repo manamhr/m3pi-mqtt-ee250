@@ -76,10 +76,10 @@ void printThread()
                action to "dispatch." The message types are defined in 
                MQTTNetwork.h */
             switch (msg->content[1]) {
-                case PRINT_MSG_TYPE_0:
+                case '0':
                     printf("printThread: this is a print of message type 0!\n");
                     break;
-                case PRINT_MSG_TYPE_1:
+                case '1':
                     printf("printThread: this is a print of message type 1!\n");
                     break;
                 default:

@@ -53,64 +53,41 @@
 
 
 
-
-
-
-
-
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> LEDMailbox;
 
 static DigitalOut led2(LED2);
 
 
-static const char *topic = "m3pi-mqtt-ee250/led-thread";
+static const char *topic = "r2d2/led-thread";
 
 // m3pi m3pi(p23, p9, p10);
 
 extern void movement(char command, char speed, int delta_t);
 const int SIZE = 4;
+int dist;
+// int distance_ar[4] = {0, 0, 0};
 
-
+void readFrontSensor()  {
+    double voltage = 0;
+    AnalogIn Ain(p15);
+    voltage = Ain.read();
+    dist = (voltage / 0.0064) * 2.54;
+    printf("Distance: %d cm\n", dist);
+    // return dist;
+}
 
 void LEDThread(void *args) 
 {
-    volatile int dist;
-    int distance_ar[3] = {0,0,0};
-
-    distance_ar[0]=dist/100;
-    distance_ar[1]=(dist%100)/10;
-    distance_ar[2]=(dist%10);
     MQTT::Client<MQTTNetwork, Countdown> *client = (MQTT::Client<MQTTNetwork, Countdown> *)args;
 
     MailMsg *msg;
     MQTT::Message message;
     osEvent evt;
     char pub_buf[16];
-	double voltage = 0;
 
-    int count = 0;
-
-    while(count < 4) 
-    {
-        AnalogIn Ain(p15);
-        voltage = Ain.read();
-        dist= (voltage / 0.0064) * 2.54; //cm, Vcc = 3.3V
-        //distance_ar[count] = dist[count];
-        count++;
-
-       
-        printf("Distance: %d  cm\n", dist);
-        wait(0.5);
-
-        
-
-
-    }
-
+    // readFrontSensor();
 
     while(1) {
-
-   
 
         evt = LEDMailbox.get();
 
@@ -119,7 +96,7 @@ void LEDThread(void *args)
 
             /* the second byte in the message denotes the action type */
             switch (msg->content[1]) {
-                case LED_THR_PUBLISH_MSG:
+                case '0':
                     printf("LEDThread: received command to publish to topic"
                            "m3pi-mqtt-example/led-thread\n");
                     pub_buf[0] = 'h';
@@ -134,14 +111,14 @@ void LEDThread(void *args)
                     client->publish(topic, message);
                     mqttMtx.unlock();
                     break;
-                case LED_ON_ONE_SEC:
+                case '1':
                     printf("LEDThread: received message to turn LED2 on for"
                            "one second...\n");
                     led2 = 1;
                     wait(1);
                     led2 = 0;
                     break;
-                case LED_BLINK_FAST:
+                case '2':
                     printf("LEDThread: received message to blink LED2 fast for"
                            "one second...\n");
                     for(int i = 0; i < 10; i++)
@@ -151,21 +128,51 @@ void LEDThread(void *args)
                     }
                     led2 = 0;
                     break;
-                case DISTANCE_READING:
+                case '3':
                     printf("LEDThread: received command to publish to topic"
-                           "m3pi-mqtt-example/led-thread\n");
-                    pub_buf[0] = (distance_ar[0]);
-                    pub_buf[1] = (distance_ar[1]);
-                    pub_buf[2] = (distance_ar[2]);
+                           "r2d2/led-thread\n");
+                    // readFrontSensor();
+                    movement('w', 25, 100);
+                    movement('w', 25, 100);
+                    movement('w', 25, 100);
+                    movement('w', 25, 100);
+
+                    readFrontSensor();
+
+                    if (dist < 100) {
+                        pub_buf[0] = (dist / 10) + 48;
+                        pub_buf[1] = (dist % 10) + 48;
+                        pub_buf[2] = ' ';
+                        pub_buf[3] = 'c';
+                        pub_buf[4] = 'm';
+                        pub_buf[5] = ' ';
+                    }
+                    else    {
+                        pub_buf[0] = (dist / 100) + 48;
+                        pub_buf[1] = ((dist / 10) % 10) + 48;
+                        pub_buf[2] = (dist % 10) + 48;
+                        pub_buf[3] = ' ';
+                        pub_buf[4] = 'c';
+                        pub_buf[5] = 'm';
+                    }
+
+                    // pub_buf[0] = (char(distance_ar[0]));
+                    // pub_buf[1] = (char(distance_ar[1]));
+                    // pub_buf[2] = (char(distance_ar[2]));
+                    // pub_buf[3] = (' ');
+                    // pub_buf[4] = ('c');
+                    // pub_buf[5] = ('m');
+                    // printf("%s\n", pub_buf);
                     message.qos = MQTT::QOS0;
                     message.retained = false;
                     message.dup = false;
                     message.payload = (void*)pub_buf;
-                    message.payloadlen = 3; //MQTTclient.h takes care of adding null char?
+                    message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
                     /* Lock the global MQTT mutex before publishing */
                     mqttMtx.lock();
                     client->publish(topic, message);
                     mqttMtx.unlock();
+                    break;
                 default:
                     printf("LEDThread: invalid message\n");
                     break;

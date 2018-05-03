@@ -84,7 +84,7 @@ Mutex mqttMtx;
 
 //Mutex dir_mut;
 //char dir;
-static char *topic = "m3pi-mqtt-ee250";
+static char *topic = "r2d2";
 
 // AnalogIn ultraSonic(p19); //ultrasonic sensor analog in
 
@@ -108,7 +108,7 @@ void movement(char command, char speed, int delta_t)
 {
     if (command == 's')
     {
-        m3pi.forward(speed);
+        m3pi.backward(speed);
         Thread::wait(delta_t);
         m3pi.stop();
     }    
@@ -120,7 +120,7 @@ void movement(char command, char speed, int delta_t)
     }   
     else if (command == 'w')
     {
-        m3pi.backward(speed);
+        m3pi.forward(speed);
         Thread::wait(delta_t);
         m3pi.stop();
     }
@@ -147,7 +147,7 @@ void messageArrived(MQTT::MessageData& md)
        callback returns */
     switch(fwdTarget)
     {
-        case FWD_TO_PRINT_THR:
+        case '0':
             printf("fwding to print thread\n");
 
             /* allocate the memory for a piece of mail */
@@ -165,7 +165,7 @@ void messageArrived(MQTT::MessageData& md)
             /* put the piece of mail into the target thread's mailbox */
             getPrintThreadMailbox()->put(msg);
             break;
-        case FWD_TO_LED_THR:
+        case '1':
             printf("fwding to led thread\n");
             msg = getLEDThreadMailbox()->alloc();
             if (!msg) {

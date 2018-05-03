@@ -16,10 +16,10 @@
             "value": true
         },
         "wifi-ssid": {
-            "value": "\"Est1880\""
+            "value": "\"USC Guest Wireless\""
         },
         "wifi-password": {
-            "value": "\"uclasucks\""
+            "value": "\"\""
         }
     },
     "target_overrides": {

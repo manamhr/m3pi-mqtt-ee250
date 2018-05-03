@@ -64,7 +64,7 @@ void LEDThread(void *args);
  */
 Mail<MailMsg, LEDTHREAD_MAILBOX_SIZE> *getLEDThreadMailbox();
 
-void readFrontSensor();
+// void readFrontSensor();
 void readBackSensor();
 
 #endif /* _LEDTHREAD_H_ */

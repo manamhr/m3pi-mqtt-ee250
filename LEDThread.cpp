@@ -64,9 +64,9 @@ const int SIZE = 4;
 char pub_buf[16];
 int dist;
 
-// Min: 1
-// Max: 100
-int speed = 35;
+// Min: 10
+// Max: 99
+int speed = 40;
 
 // 0: CCW
 // 1: CW
@@ -115,20 +115,27 @@ void movement(char command, char speed, int delta_t)    {
     }
 }
 
+// sensor = 0 -> Front
+// sensor = 1 -> Rear
+// Reads the distance on a specified sensor and publishes the data to each sensor's respective topic
 void readSensor(MQTT::Client<MQTTNetwork, Countdown> *client, MailMsg *msg, MQTT::Message message, osEvent evt, int sensor)  {
-    double voltage = 0, newVoltage = 0;
-
+    double voltage = 0;
+    
+    // Front
     if (sensor == 0)    {
         AnalogIn Ain(p15);
         voltage = Ain.read();
     }
+    // Rear
     else    {
         AnalogIn Ain(p16);
         voltage = Ain.read();
     }
-
+    
+    // Convert voltage to centimeters
     dist = (voltage / 0.0064) * 2.54;
 
+    // Handle 2 digit and 3 digit distance for publishing
     if (dist < 100) {
         pub_buf[0] = (dist / 10) + 48;
         pub_buf[1] = (dist % 10) + 48;
@@ -145,7 +152,8 @@ void readSensor(MQTT::Client<MQTTNetwork, Countdown> *client, MailMsg *msg, MQTT
         pub_buf[4] = 'c';
         pub_buf[5] = 'm';
     }
-
+    
+    // Publish
     message.qos = MQTT::QOS0;
     message.retained = false;
     message.dup = false;
@@ -159,40 +167,6 @@ void readSensor(MQTT::Client<MQTTNetwork, Countdown> *client, MailMsg *msg, MQTT
         client->publish(topic2, message);
     mqttMtx.unlock();
 }
-
-// void readBackSensor(MQTT::Client<MQTTNetwork, Countdown> *client, MailMsg *msg, MQTT::Message message, osEvent evt)  {
-//     double voltage = 0;
-//     AnalogIn Ain(p16);
-//     voltage = Ain.read();
-//     dist = (voltage / 0.0064) * 2.54;
-
-//     if (dist < 100) {
-//         pub_buf[0] = (dist / 10) + 48;
-//         pub_buf[1] = (dist % 10) + 48;
-//         pub_buf[2] = ' ';
-//         pub_buf[3] = 'c';
-//         pub_buf[4] = 'm';
-//         pub_buf[5] = ' ';
-//     }
-//     else    {
-//         pub_buf[0] = (dist / 100) + 48;
-//         pub_buf[1] = ((dist / 10) % 10) + 48;
-//         pub_buf[2] = (dist % 10) + 48;
-//         pub_buf[3] = ' ';
-//         pub_buf[4] = 'c';
-//         pub_buf[5] = 'm';
-//     }
-
-//     message.qos = MQTT::QOS0;
-//     message.retained = false;
-//     message.dup = false;
-//     message.payload = (void*)pub_buf;
-//     message.payloadlen = 6; //MQTTclient.h takes care of adding null char?
-//     /* Lock the global MQTT mutex before publishing */
-//     mqttMtx.lock();
-//     client->publish(topic2, message);
-//     mqttMtx.unlock();
-// }
 
 void LEDThread(void *args) 
 {
@@ -213,11 +187,17 @@ void LEDThread(void *args)
             switch (msg->content[1]) {
                 // Move forward
                 case '3':
+                    // Front sensor
                     readSensor(client, msg, message, evt, 0);
+                    // Handle first obstacle
                     if (dist < 26)  {
+                        // Avoid
                         rotate(35, 220, angle);
                         Thread::wait(1);
+                        // Check for another obstacle before going forward
                         readSensor(client, msg, message, evt, 0);
+                        
+                        // Handles a corner
                         if (dist < 26)  {
                             rotate(35, 220, angle);
                             movement('w', speed, 400);
@@ -239,12 +219,16 @@ void LEDThread(void *args)
                     break;
                 // Move backward
                 case '4':
-                    // Rear
+                    // Rear Sensor
                     readSensor(client, msg, message, evt, 1);
+                    // Handle first obstacle
                     if (dist < 26)  {
+                        // Avoid
                         rotate(35, 220, angle);
                         Thread::wait(1);
+                        // Check for another obstacle before going forward
                         readSensor(client, msg, message, evt, 1);
+                        // Handles a corner
                         if (dist < 26)  {
                             rotate(35, 220, angle);
                             movement('s', speed, 400);

@@ -116,7 +116,7 @@ void movement(char command, char speed, int delta_t)    {
 }
 
 void readSensor(MQTT::Client<MQTTNetwork, Countdown> *client, MailMsg *msg, MQTT::Message message, osEvent evt, int sensor)  {
-    double voltage = 0;
+    double voltage = 0, newVoltage = 0;
 
     if (sensor == 0)    {
         AnalogIn Ain(p15);
@@ -211,45 +211,14 @@ void LEDThread(void *args)
 
             /* the second byte in the message denotes the action type */
             switch (msg->content[1]) {
-                // case '0':
-                //     printf("LEDThread: received command to publish to topic"
-                //            "m3pi-mqtt-example/led-thread\n");
-                //     pub_buf[0] = 'h';
-                //     pub_buf[1] = 'i';
-                //     message.qos = MQTT::QOS0;
-                //     message.retained = false;
-                //     message.dup = false;
-                //     message.payload = (void*)pub_buf;
-                //     message.payloadlen = 2; //MQTTclient.h takes care of adding null char?
-                //     /* Lock the global MQTT mutex before publishing */
-                //     mqttMtx.lock();
-                //     client->publish(topic1, message);
-                //     mqttMtx.unlock();
-                //     break;
-                // case '1':
-                //     printf("LEDThread: received message to turn LED2 on for"
-                //            "one second...\n");
-                //     led2 = 1;
-                //     wait(1);
-                //     led2 = 0;
-                //     break;
-                case '2':
-                    printf("LEDThread: received message to blink LED2 fast for"
-                           "one second...\n");
-                    for(int i = 0; i < 10; i++)
-                    {
-                        led2 = !led2;
-                        wait(0.1);
-                    }
-                    led2 = 0;
-                    break;
                 // Move forward
                 case '3':
                     readSensor(client, msg, message, evt, 0);
-                    if (dist < 20)  {
+                    if (dist < 26)  {
                         rotate(35, 220, angle);
+                        Thread::wait(1);
                         readSensor(client, msg, message, evt, 0);
-                        if (dist < 20)  {
+                        if (dist < 26)  {
                             rotate(35, 220, angle);
                             movement('w', speed, 400);
                         }
@@ -272,10 +241,11 @@ void LEDThread(void *args)
                 case '4':
                     // Rear
                     readSensor(client, msg, message, evt, 1);
-                    if (dist < 20)  {
+                    if (dist < 26)  {
                         rotate(35, 220, angle);
+                        Thread::wait(1);
                         readSensor(client, msg, message, evt, 1);
-                        if (dist < 20)  {
+                        if (dist < 26)  {
                             rotate(35, 220, angle);
                             movement('s', speed, 400);
                         }
@@ -325,6 +295,8 @@ void LEDThread(void *args)
                 case '8':
                     angle = 0;
                     break;
+                case '9':
+                    speed = atoi(msg->content + 2);
                 default:
                     printf("LEDThread: invalid message\n");
                     break;
